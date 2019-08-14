@@ -24,6 +24,16 @@ class ET_IpSecurity_Model_Observer
 {
     const TOKEN_COOKIE_NAME = 'ipsecurity_token';
 
+    /**
+     * Rss with admin authentication
+     * @var array
+     */
+    protected $_requestPathList = array(
+        '/rss/order/new',
+        '/rss/catalog/notifystock',
+        '/rss/catalog/review'
+    );
+
     protected $_redirectPage = null;
     protected $_redirectBlank = null;
     protected $_rawAllowIpData = null;
@@ -57,6 +67,30 @@ class ET_IpSecurity_Model_Observer
         $this->_readFrontendConfig();
         $this->_readTokenConfig();
         $this->_processIpCheck($observer);
+    }
+
+    /**
+     * If loading Frontend and router is "rss"
+     *
+     * Event: controller_front_init_routers
+     * @param Varien_Event_Observer $observer
+     */
+    public function onLoadingRss($observer)
+    {
+        foreach ($this->_requestPathList as $pattern) {
+            if (strpos(Mage::app()->getRequest()->getPathInfo(), $pattern) !== false) {
+                /** @var ET_IpSecurity_Helper_Data $helper */
+                $helper = Mage::helper('etipsecurity');
+                $helper->log('onLoadingRss()');
+
+                $eventName = (string)$observer->getEvent()->getName();
+                $helper->log('event Name: ' . $eventName);
+
+                $this->_readAdminConfig();
+                $this->_readTokenConfig();
+                $this->_processIpCheck($observer);
+            }
+        }
     }
 
     /**
@@ -200,13 +234,15 @@ class ET_IpSecurity_Model_Observer
     protected function _processIpCheck($observer)
     {
         $currentIp = $this->getCurrentIp();
+        //error or IPv6 or localhost
+        if (is_null($currentIp) || $currentIp === "127.0.0.1") {
+            return $this;
+        }
+
         $allowIps = $this->_ipTextToArray($this->_rawAllowIpData);
         $blockIps = $this->_ipTextToArray($this->_rawBlockIpData);
 
         $allow = $this->isIpAllowed($currentIp, $allowIps, $blockIps);
-
-        //FOR DEBUG TESTING Token Access !!!! REMOVE AFTER TEST
-        //$allow = false;
 
         if (!$allow) {
             $allow = $this->_checkSecurityTokenAccess($observer);
@@ -404,9 +440,9 @@ class ET_IpSecurity_Model_Observer
         );
 
         $ipTokenLogModel->setData('create_time', now());
-        
+
         $helper->log('_addTokenLog():');
-        $helper->log('url: '.$fullUrl);
+        $helper->log('url: ' . $fullUrl);
 
         $ipTokenLogModel->setData('blocked_from', $fullUrl);
 
@@ -496,14 +532,16 @@ class ET_IpSecurity_Model_Observer
      */
     protected function _processAllowDeny($allow, $currentIp)
     {
-        //TODO: Refactoring?
         $currentPage = $this->trimTrailingSlashes(Mage::helper('core/url')->getCurrentUrl());
         // searching for CMS page storeId
-        // if we don't do it - we have loop in redirect with setting Add Store Code to Urls = Yes
         // (block access to admin redirects to admin)
         $pageStoreId = $this->getPageStoreId();
-        $this->_redirectPage = $this->trimTrailingSlashes(Mage::app()->getStore($pageStoreId)->getBaseUrl())
-            . "/" . $this->_redirectPage;
+        if ($pageStoreId !== false) {
+            $this->_redirectPage = Mage::getUrl(null, array('_direct' => $this->_redirectPage, "_store" => $pageStoreId));
+        } else {
+            //no active page to redirect - redirecting to no-route
+            $this->_redirectPage = Mage::getUrl('no-route', array("_store" => $pageStoreId));
+        }
         $scope = $this->_getScopeName();
 
         if (!strlen($this->_redirectPage) && !$this->_isDownloader) {
@@ -568,42 +606,42 @@ class ET_IpSecurity_Model_Observer
     /**
      * Get store id of target redirect cms page
      *
-     * @return int
+     * @return int|
      */
+
     public function getPageStoreId()
     {
-        $stores = array();
-        $pageStoreIds = array();
+        /* @var $cmsPage Mage_Cms_Model_Page */
+        $cmsPage = Mage::getModel('cms/page');
+        $storeId = Mage::app()->getStore()->getId();
 
-        foreach (Mage::app()->getStores() as $store) {
-            /* @var $store Mage_Core_Model_Store */
-            $stores[] = $store->getId();
-            $pageId = Mage::getModel('cms/page')->checkIdentifier($this->_redirectPage, $store->getId());
-            if ($pageId === false) {
-                continue;
-            }
-            $pageStoreIds = Mage::getResourceModel('cms/page')->lookupStoreIds($pageId);
-            if (count($pageStoreIds)) { // found page
-                break;
-            }
-        }
-
-        if (!count($pageStoreIds)) { // no found in any store
-            $pageStoreIds[] = 0;
-        }
-        //default
-        $pageStoreId = 0;
-        foreach ($pageStoreIds as $pageStoreId) {
-            if ($pageStoreId > 0) {
-                break;
+        //if current store is Admin
+        if ($storeId == 0) {
+            if (isset($_SERVER["SERVER_NAME"])) {
+                /** @var Mage_Core_Model_Store $store */
+                foreach (Mage::app()->getStores() as $store) {
+                    $url = $store->getBaseUrl(Mage_Core_Model_Store::URL_TYPE_WEB, false);
+                    //domain check
+                    if (strpos($url, $_SERVER["SERVER_NAME"]) !== false) {
+                        $redirectPage = $this->trimTrailingSlashes(
+                            Mage::getStoreConfig('etipsecurity/ipsecurityadmin/redirect_page', $store->getId()));
+                        //store have that page
+                        if ($cmsPage->checkIdentifier($redirectPage, $store->getId())) {
+                            $this->_redirectPage = $redirectPage;
+                            return $store->getId();
+                        }
+                    }
+                }
             }
         }
-
-        if ($pageStoreId == 0) {
-            $pageStoreId = $stores[0];
-            return $pageStoreId; // first available store
+        //check identifier check page on active and specified store
+        $pageId = $cmsPage->checkIdentifier($this->_redirectPage, $storeId);
+        if ($pageId > 0) {
+            //current store id
+            return $storeId;
         }
-        return $pageStoreId;
+        //no active redirect page for current store
+        return false;
     }
 
 
@@ -826,6 +864,21 @@ class ET_IpSecurity_Model_Observer
             default:
                 $result = $currentIp;
         }
+        //IPv6 127.0.0.1
+        if ($result == "::1") {
+            $result = "127.0.0.1";
+        } elseif (substr_count($result, ':') > 0) {
+            //finding ipv4 part
+            $ipVFourArray = explode(".", $result);
+            //IPv4-compatible IPv6
+            if (count($ipVFourArray) == 4) {
+                $ipVFourArray[0] = array_pop(explode(":", $ipVFourArray[0]));
+                return implode(".", $ipVFourArray);
+            }
+            //no real ip4 address
+            return null;
+        }
+
         return $result;
     }
 

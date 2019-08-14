@@ -20,13 +20,16 @@
 /**
  * Class ET_IpSecurity_Model_IpVariable
  */
-class ET_IpSecurity_Model_IpVariable extends Mage_Eav_Model_Entity_Attribute_Source_Abstract
+class ET_IpSecurity_Model_IpVariable
 {
+
+    protected $_options;
+
     /**
      * Option getter
      * @return array
      */
-    public function getAllOptions()
+    public function toOptionArray()
     {
         if (is_null($this->_options)) {
             $this->_options = array(
@@ -56,22 +59,28 @@ class ET_IpSecurity_Model_IpVariable extends Mage_Eav_Model_Entity_Attribute_Sou
     }
 
     /**
+     * Get options in "key-value" format
+     *
      * @return array
      */
     public function getOptionArray()
     {
         $_options = array();
-        foreach ($this->getAllOptions() as $option) {
+        foreach ($this->toOptionArray() as $option) {
             $_options[$option['value']] = $option['label'];
         }
         return $_options;
     }
 
+
     /**
+     * Options getter
+     *
      * @return array
      */
-    public function toOptionArray()
+    public function toArray()
     {
         return $this->getOptionArray();
     }
+
 }

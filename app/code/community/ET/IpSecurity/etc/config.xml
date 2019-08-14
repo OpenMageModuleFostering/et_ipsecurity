@@ -23,7 +23,7 @@
     <modules>
         <ET_IpSecurity>
             <name>ET Ip Security</name>
-            <version>2.2.0</version>
+            <version>2.3.0</version>
             <descr>
                 <ru_RU><![CDATA[Модуль позволяет ограничивать доступ к сайту посетителям по IP, IP маскам или диапозону IP.
                     <br>При срабатывании правила перенаправляет посетителя на указанную CMS страницу или просто на пустую страницу.
@@ -161,6 +161,11 @@
                         <class>etipsecurity/observer</class>
                         <method>onLoadingDownloader</method>
                     </ET_IpSecurity_observer>
+                    <ET_IpSecurity_observer_rss>
+                        <type>singleton</type>
+                        <class>etipsecurity/observer</class>
+                        <method>onLoadingRss</method>
+                    </ET_IpSecurity_observer_rss>
                 </observers>
             </controller_front_init_routers>
         </events>
