@@ -17,8 +17,14 @@
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
+/**
+ * Class ET_IpSecurity_Model_Mysql4_Ipsecuritylog_Collection
+ */
 class ET_IpSecurity_Model_Mysql4_Ipsecuritylog_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
 {
+    /**
+     * Internal constructor
+     */
     public function _construct()
     {
         parent::_construct();

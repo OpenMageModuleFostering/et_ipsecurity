@@ -17,6 +17,9 @@
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
+/**
+ * Class ET_IpSecurity_Test_Model_Observer
+ */
 class ET_IpSecurity_Test_Model_Observer extends EcomDev_PHPUnit_Test_Case
 {
     /**

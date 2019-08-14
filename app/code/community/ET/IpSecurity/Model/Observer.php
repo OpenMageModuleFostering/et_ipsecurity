@@ -17,8 +17,13 @@
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
+/**
+ * Class ET_IpSecurity_Model_Observer
+ */
 class ET_IpSecurity_Model_Observer
 {
+    const TOKEN_COOKIE_NAME = 'ipsecurity_token';
+
     protected $_redirectPage = null;
     protected $_redirectBlank = null;
     protected $_rawAllowIpData = null;
@@ -33,25 +38,44 @@ class ET_IpSecurity_Model_Observer
     protected $_isDownloader = false;
     protected $_alwaysNotify = false;
 
+    protected $_eventEmailToken = "";
+    protected $_alwaysNotifyToken = false;
+    protected $_emailTemplateToken = 0;
+    protected $_emailTemplateTokenFail;
+    protected $_emailIdentityToken = null;
+
+    protected static $_flagCheckToken = 0;
+
     /**
      * If loading Frontend
      *
+     * Event: controller_action_predispatch
      * @param $observer
      */
     public function onLoadingFrontend($observer)
     {
         $this->_readFrontendConfig();
+        $this->_readTokenConfig();
         $this->_processIpCheck($observer);
     }
 
     /**
      * If loading Admin
      *
+     * Event: controller_action_predispatch
      * @param $observer
      */
     public function onLoadingAdmin($observer)
     {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+        $helper->log('onLoadingAdmin()');
+
+        $eventName = (string)$observer->getEvent()->getName();
+        $helper->log('event Name: ' . $eventName);
+
         $this->_readAdminConfig();
+        $this->_readTokenConfig();
         $this->_processIpCheck($observer);
     }
 
@@ -59,6 +83,8 @@ class ET_IpSecurity_Model_Observer
      * On failed login to Admin
      *
      * @param $observer
+     *
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function onAdminLoginFailed($observer)
     {
@@ -68,7 +94,8 @@ class ET_IpSecurity_Model_Observer
     /**
      * On loading Downloader
      *
-     * @param $observer
+     * Event: controller_front_init_routers
+     * @param Varien_Event_Observer $observer
      */
     public function onLoadingDownloader($observer)
     {
@@ -99,6 +126,7 @@ class ET_IpSecurity_Model_Observer
         $this->_isFrontend = true;
     }
 
+
     /**
      * Reading configuration for Admin
      */
@@ -112,11 +140,24 @@ class ET_IpSecurity_Model_Observer
         $this->_eventEmail = Mage::getStoreConfig('etipsecurity/ipsecurityadmin/email_event');
         $this->_emailTemplate = Mage::getStoreConfig('etipsecurity/ipsecurityadmin/email_template');
         $this->_emailIdentity = Mage::getStoreConfig('etipsecurity/ipsecurityadmin/email_identity');
-        $this->_alwaysNotify = Mage::getStoreConfig('etipsecurity/ipsecurityadmin/alwaysnotify');
+        $this->_alwaysNotify = Mage::getStoreConfig('etipsecurity/ipsecurityadmin/email_always');
 
         $this->_storeType = Mage::helper("core")->__("Admin");
         $this->_isFrontend = false;
     }
+
+    /**
+     * load Token config
+     */
+    protected function _readTokenConfig()
+    {
+        $this->_eventEmailToken = Mage::getStoreConfig('etipsecurity/ipsecuritytoken/email_event');
+        $this->_alwaysNotifyToken = Mage::getStoreConfig('etipsecurity/ipsecuritytoken/email_always');
+        $this->_emailTemplateToken = Mage::getStoreConfig('etipsecurity/ipsecuritytoken/email_template');
+        $this->_emailTemplateTokenFail = Mage::getStoreConfig('etipsecurity/ipsecuritytoken/fail_email_template');
+        $this->_emailIdentityToken = Mage::getStoreConfig('etipsecurity/ipsecuritytoken/email_identity');
+    }
+
 
     /**
      * Read configuration for Downloader (used Admin config)
@@ -153,7 +194,7 @@ class ET_IpSecurity_Model_Observer
     /**
      * Checking current ip for rules
      *
-     * @param $observer
+     * @param Varien_Event_Observer $observer
      * @return ET_IpSecurity_Model_Observer
      */
     protected function _processIpCheck($observer)
@@ -163,10 +204,256 @@ class ET_IpSecurity_Model_Observer
         $blockIps = $this->_ipTextToArray($this->_rawBlockIpData);
 
         $allow = $this->isIpAllowed($currentIp, $allowIps, $blockIps);
+
+        //FOR DEBUG TESTING Token Access !!!! REMOVE AFTER TEST
+        //$allow = false;
+
+        if (!$allow) {
+            $allow = $this->_checkSecurityTokenAccess($observer);
+        }
+
         $this->_processAllowDeny($allow, $currentIp);
 
         return $this;
     }
+
+
+    /**
+     * check Access By Token
+     *
+     * @param Varien_Event_Observer $observer
+     * @return bool
+     */
+    protected function _checkSecurityTokenAccess(Varien_Event_Observer $observer)
+    {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+        $helper->log('_checkSecurityTokenAccess()');
+
+        $access = false;
+
+        // if Module Enabled && Not Empty Url and Token
+        if (($helper->isEnabledIpSecurityToken()) && ($helper->isSetTokenLastUpdateAndUrl())) {
+
+            $helper->log('IpSecurityToken: Enabled');
+
+            /** @var ET_IpSecurity_Model_System_Config_Source_Token_Expire $tokenModel */
+            $tokenModel = Mage::getModel('etipsecurity/system_config_source_token_expire');
+
+            if (!$tokenModel->isTokenExpired()) {
+                $helper->log('token not expired');
+
+                $tokenValueConfig = $helper->getTokenValue();
+
+                $access = $this->_checkAccessByCookie($tokenValueConfig);
+
+                if (!$access) {
+                    $access = $this->_checkAccessByToken($observer, $tokenValueConfig);
+                }
+
+            } else {
+                // log token expired
+                $helper->log('token expired');
+            }
+        } else {
+            $helper->log('IpSecurityToken: Disabled');
+        }
+
+        return $access;
+    }
+
+    /**
+     * send Token email notification
+     *
+     * @param bool $success
+     * @throws Mage_Core_Exception
+     */
+    protected function _notifyLoginByToken($fullUrl, $success)
+    {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+        $helper->log('_notifyLoginByToken()');
+
+        if ($success) {
+            $template = $this->_emailTemplateToken;
+        } else {
+            $template = $this->_emailTemplateTokenFail;
+        }
+
+        if (!$this->_eventEmailToken && (!$template)) {
+            return;
+        }
+
+        $currentIp = $this->getCurrentIp();
+        $recipients = explode(",", $this->_eventEmailToken);
+
+        /* @var Mage_Core_Model_Email_Template $emailTemplate */
+        $emailTemplate = Mage::getModel('core/email_template')->setDesignConfig(array('area' => 'backend'));
+
+        $coreHelper = Mage::helper('core');
+
+        foreach ($recipients as $recipient) {
+
+            try {
+                $emailTemplate
+                    ->sendTransactional(
+                        $template,
+                        $this->_emailIdentityToken,
+                        trim($recipient),
+                        trim($recipient),
+                        array(
+                            'ip' => $currentIp,
+                            'ip_rule' => Mage::helper('etipsecurity')->__($this->getLastBlockRule()),
+                            'date' => $coreHelper->formatDate(null, Mage_Core_Model_Locale::FORMAT_TYPE_FULL, true),
+                            'storetype' => $this->_storeType,
+                            'url' => $fullUrl,
+                            'info' => base64_encode(serialize(array($this->_rawAllowIpData, $this->_rawBlockIpData))),
+                        )
+                    );
+            } catch (Exception $ex) {
+                $helper->log($ex);
+            }
+        }
+    }
+
+
+    /**
+     * @param Varien_Event_Observer $observer
+     * @param string $tokenValueConfig
+     * @return bool
+     */
+    protected function _checkAccessByToken($observer, $tokenValueConfig)
+    {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+        $helper->log('_checkAccessByToken()');
+
+        $access = false;
+
+        /** @var Mage_Cms_IndexController $controller */
+        $controller = $observer->getControllerAction();
+        $eventName = (string)$observer->getEvent()->getName();
+        $helper->log('event Name: ' . $eventName);
+
+        if ($controller) {
+
+            $tokenName = $helper->getTokenName();
+            $helper->log('token Name: ' . $tokenName);
+
+            $tokenValueRequest = $controller->getRequest()->getParam($tokenName);
+
+            //$fullUrl = $controller->getRequest()->getServer('HTTP_REFERER');
+            //$fullUrl = $controller->getRequest()->getServer('SCRIPT_URI');
+            $fullUrl = Mage::helper('core/url')->getCurrentUrl();
+
+            $helper->log('token value request: ' . $tokenValueRequest);
+            $helper->log('token value config: ' . $tokenValueConfig);
+
+            if ($tokenValueRequest) {
+
+                if ($tokenValueRequest == $tokenValueConfig) {
+
+                    $helper->setCookieToken(self::TOKEN_COOKIE_NAME, $tokenValueConfig);
+                    $access = true;
+
+                    if (!self::$_flagCheckToken) {
+                        $this->_addTokenLog($fullUrl, 'Successful token use');
+
+                        $this->_notifyLoginByToken($fullUrl, true);
+
+                        // log logOn By token Ok
+                        $helper->log('Successful token use: Ok, set cookie Ok');
+
+                        self::$_flagCheckToken = 1;
+                    }
+
+                } else {
+                    // log not valid token
+                    $helper->log('Unsuccessful token use attempt: not valid token');
+
+                    $this->_addTokenLog($fullUrl, 'Unsuccessful token use attempt');
+
+                    if ($this->_alwaysNotifyToken) {
+                        $this->_notifyLoginByToken($fullUrl, false);
+                    }
+                }
+            }
+        }
+
+        return $access;
+    }
+
+    /**
+     * add token Log
+     *
+     * @param string $message
+     */
+    protected function _addTokenLog($fullUrl, $message)
+    {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+
+        /** @var ET_IpSecurity_Model_Iptokenlog $ipTokenLogModel */
+        $ipTokenLogModel = Mage::getModel('etipsecurity/iptokenlog');
+
+        $ipTokenLogModel->setData('blocked_ip', $this->getCurrentIp());
+
+        $ipTokenLogModel->setData('last_block_rule',
+            //$helper->__($message)
+            $message
+        );
+
+        $ipTokenLogModel->setData('create_time', now());
+        
+        $helper->log('_addTokenLog():');
+        $helper->log('url: '.$fullUrl);
+
+        $ipTokenLogModel->setData('blocked_from', $fullUrl);
+
+        try {
+            $ipTokenLogModel->save();
+        } catch (Exception $ex) {
+            $helper->log('error Add Token Log: ', $ex);
+        }
+    }
+
+
+    /**
+     * check access By cookie
+     * is set & valid return true
+     *
+     * @param string $tokenValueConfig
+     * @return bool
+     */
+    protected function _checkAccessByCookie($tokenValueConfig)
+    {
+        /** @var ET_IpSecurity_Helper_Data $helper */
+        $helper = Mage::helper('etipsecurity');
+        $helper->log('_checkAccessByCookie()');
+        $access = false;
+
+        $cookieValue = $helper->getCookie(self::TOKEN_COOKIE_NAME);
+
+        // check cookie if OK set new Time Expire
+        if ($cookieValue) {
+            if ($cookieValue == $tokenValueConfig) {
+
+                $helper->setCookieToken(self::TOKEN_COOKIE_NAME, $cookieValue);
+                $access = true;
+
+                // log cookie update
+                $helper->log('cookie valid & update, access: true');
+            } else {
+                // cookie not valid
+                $helper->log('cookie not valid, access: false');
+            }
+        } else {
+            $helper->log('cookie not set');
+        }
+
+        return $access;
+    }
+
 
     /**
      * Check IP for allow/deny rules
@@ -234,7 +521,7 @@ class ET_IpSecurity_Model_Observer
             exit("Access denied for IP:<b> " . $currentIp . "</b>");
         }
 
-        if ($currentPage != $this->_redirectPage && !$allow) {
+        if ($this->trimTrailingSlashes($currentPage) != $this->trimTrailingSlashes($this->_redirectPage) && !$allow) {
             header('Location: ' . $this->_redirectPage);
             $needToNotify = $this->saveToLog(array('blocked_from' => $scope, 'blocked_ip' => $currentIp));
             if (($this->_alwaysNotify) || $needToNotify) {
@@ -289,7 +576,7 @@ class ET_IpSecurity_Model_Observer
         $pageStoreIds = array();
 
         foreach (Mage::app()->getStores() as $store) {
-            /* @var $store Mage_Core_Model_Store*/
+            /* @var $store Mage_Core_Model_Store */
             $stores[] = $store->getId();
             $pageId = Mage::getModel('cms/page')->checkIdentifier($this->_redirectPage, $store->getId());
             if ($pageId === false) {
@@ -460,24 +747,26 @@ class ET_IpSecurity_Model_Observer
 
         $recipients = explode(",", $this->_eventEmail);
 
-        /* @var $emailTemplate Mage_Core_Model_Email_Template */
-        $emailTemplate = Mage::getModel('core/email_template');
+        /* @var Mage_Core_Model_Email_Template $emailTemplate */
+        $emailTemplate = Mage::getModel('core/email_template')->setDesignConfig(array('area' => 'backend'));
+        $coreHelper = Mage::helper('core');
+        $coreUrlHelper = Mage::helper('core/url');
         foreach ($recipients as $recipient) {
-            $sendResult = $emailTemplate->setDesignConfig(array('area' => 'backend'))
+            $sendResult = $emailTemplate
                 ->sendTransactional(
-                $this->_emailTemplate,
-                $this->_emailIdentity,
-                trim($recipient),
-                trim($recipient),
-                array(
-                    'ip' => $currentIp,
-                    'ip_rule' => Mage::helper('etipsecurity')->__($this->getLastBlockRule()), // TODO: translation
-                    'date' => Mage::app()->getLocale()->date(date("Y-m-d H:i:s"), Mage::app()->getLocale()
-                        ->getDateTimeFormat(Mage_Core_Model_Locale::FORMAT_TYPE_MEDIUM), null, true),
-                    'storetype' => $this->_storeType,
-                    'info' => base64_encode(serialize(array($this->_rawAllowIpData, $this->_rawBlockIpData))),
-                )
-            );
+                    $this->_emailTemplate,
+                    $this->_emailIdentity,
+                    trim($recipient),
+                    trim($recipient),
+                    array(
+                        'ip' => $currentIp,
+                        'ip_rule' => Mage::helper('etipsecurity')->__($this->getLastBlockRule()),
+                        'date' => $coreHelper->formatDate(null, Mage_Core_Model_Locale::FORMAT_TYPE_FULL, true),
+                        'storetype' => $this->_storeType,
+                        'url' => $coreUrlHelper->getCurrentUrl(),
+                        'info' => base64_encode(serialize(array($this->_rawAllowIpData, $this->_rawBlockIpData))),
+                    )
+                );
         }
         return $sendResult;
     }
@@ -503,16 +792,41 @@ class ET_IpSecurity_Model_Observer
      */
     public function getCurrentIp()
     {
-        // http://support.etwebsolutions.com/issues/373
-        /*
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $currentIp = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        /** @var $helper ET_IpSecurity_Helper_Data */
+        $helper = Mage::helper('etipsecurity');
+        $selectedIpVariable = $helper->getIpVariable();
+
+        if (isset($_SERVER[$selectedIpVariable])) {
+            $currentIp = $_SERVER[$selectedIpVariable];
+        } elseif (isset($_SERVER["REMOTE_ADDR"])) { //
+            //no default IP variable
+            $currentIp = $_SERVER["REMOTE_ADDR"];
         } else {
-            $currentIp = $_SERVER['REMOTE_ADDR'];
+            //unknown IP
+            $currentIp = "0.0.0.0";
         }
-        */
-        $currentIp = $_SERVER['REMOTE_ADDR'];
-        return $currentIp;
+        return $this->_getCurrentIp($currentIp, $selectedIpVariable);
+    }
+
+    /**
+     * HTTP_X_FORWARDED_FOR can return comma delimetered list of IP addresses.
+     * We need only one IP address to check
+     *
+     * @param $currentIp
+     * @param $selectedIpVariable
+     * @return string
+     */
+    protected function _getCurrentIp($currentIp, $selectedIpVariable)
+    {
+        switch ($selectedIpVariable) {
+            case 'HTTP_X_FORWARDED_FOR':
+                $resultArray = explode(',', $currentIp);
+                $result = trim($resultArray[0]);
+                break;
+            default:
+                $result = $currentIp;
+        }
+        return $result;
     }
 
     /**
@@ -540,7 +854,7 @@ class ET_IpSecurity_Model_Observer
      */
     protected function saveToLog($params = array())
     {
-        $neednotify = true;
+        $needNotify = true;
 
         if (!((isset($params['blocked_ip'])) && (strlen(trim($params['blocked_ip'])) > 0))) {
             $params['blocked_ip'] = $this->getCurrentIp();
@@ -552,26 +866,27 @@ class ET_IpSecurity_Model_Observer
 
         $now = now();
 
-        /* @var $logtable ET_IpSecurity_Model_Mysql4_Ipsecuritylog_Collection*/
-        $logtable = Mage::getModel('etipsecurity/ipsecuritylog')->getCollection();
-        $logtable->getSelect()->where('blocked_from=?', $params['blocked_from'])
+        /* @var $logTable ET_IpSecurity_Model_Mysql4_Ipsecuritylog_Collection */
+        $logTable = Mage::getModel('etipsecurity/ipsecuritylog')->getCollection();
+        $logTable->getSelect()->where('blocked_from=?', $params['blocked_from'])
             ->where('blocked_ip=?', $params['blocked_ip']);
 
-        if (count($logtable) > 0) {
-            foreach ($logtable as $row) {
-                /* @var $row ET_IpSecurity_Model_Ipsecuritylog*/
+        if (count($logTable) > 0) {
+            foreach ($logTable as $row) {
+                /* @var $row ET_IpSecurity_Model_Ipsecuritylog */
                 $timesBlocked = $row->getData('qty') + 1;
                 $row->setData('qty', $timesBlocked);
                 $row->setData('last_block_rule', $this->getLastBlockRule());
                 $row->setData('update_time', $now);
                 $row->save();
                 if (($timesBlocked % 10) == 0) {
-                    $neednotify = true;
+                    $needNotify = true;
                 } else {
-                    $neednotify = false;
+                    $needNotify = false;
                 }
             }
         } else {
+            /** @var ET_IpSecurity_Model_Ipsecuritylog $log */
             $log = Mage::getModel('etipsecurity/ipsecuritylog');
 
             $log->setData('blocked_from', $params['blocked_from']);
@@ -582,11 +897,11 @@ class ET_IpSecurity_Model_Observer
             $log->setData('update_time', $now);
 
             $log->save();
-            $neednotify = true;
+            $needNotify = true;
         }
 
         // if returns true - IP blocked for first time or timesBloked is 10, 20, 30 etc.
-        return $neednotify;
+        return $needNotify;
     }
 
 }

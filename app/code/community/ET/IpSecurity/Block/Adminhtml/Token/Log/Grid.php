@@ -12,15 +12,15 @@
  *
  * @category   ET
  * @package    ET_IpSecurity
- * @copyright  Copyright (c) 2012 ET Web Solutions (http://etwebsolutions.com)
+ * @copyright  Copyright (c) 2016 ET Web Solutions (http://etwebsolutions.com)
  * @contacts   support@etwebsolutions.com
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
 /**
- * Class ET_IpSecurity_Block_Adminhtml_Log_Grid
+ * Class ET_IpSecurity_Block_Adminhtml_Token_Log_Grid
  */
-class ET_IpSecurity_Block_Adminhtml_Log_Grid extends Mage_Adminhtml_Block_Widget_Grid
+class ET_IpSecurity_Block_Adminhtml_Token_Log_Grid extends Mage_Adminhtml_Block_Widget_Grid
 {
     /**
      * Constructor
@@ -28,8 +28,8 @@ class ET_IpSecurity_Block_Adminhtml_Log_Grid extends Mage_Adminhtml_Block_Widget
     public function __construct()
     {
         parent::__construct();
-        $this->setId('etipsecuritylogGrid');
-        $this->setDefaultSort('update_time');
+        $this->setId('etIpSecurityTokenLogGrid');
+        $this->setDefaultSort('create_time');
         $this->setDefaultDir('DESC');
         $this->setSaveParametersInSession(true);
     }
@@ -37,17 +37,18 @@ class ET_IpSecurity_Block_Adminhtml_Log_Grid extends Mage_Adminhtml_Block_Widget
     /**
      * Prepare grid collection object
      *
-     * @return ET_IpSecurity_Block_Adminhtml_Log_Grid $this
+     * @return Mage_Adminhtml_Block_Widget_Grid
      */
     protected function _prepareCollection()
     {
-        /** @var ET_IpSecurity_Model_Ipsecuritylog $model */
-        $model = Mage::getModel('etipsecurity/ipsecuritylog');
+        /** @var ET_IpSecurity_Model_Iptokenlog $model */
+        $model = Mage::getModel('etipsecurity/iptokenlog');
 
         $collection = $model->getCollection();
         $this->setCollection($collection);
         return parent::_prepareCollection();
     }
+
 
     /**
      * Prepare grid columns
@@ -57,27 +58,20 @@ class ET_IpSecurity_Block_Adminhtml_Log_Grid extends Mage_Adminhtml_Block_Widget
      */
     protected function _prepareColumns()
     {
-
         /** @var ET_IpSecurity_Helper_Data $helper */
         $helper = Mage::helper('etipsecurity');
 
-        $this->addColumn('blocked_ip', array(
-            'header' => $helper->__('Blocked IP'),
-            'align' => 'left',
-            'width' => '150px',
-            'index' => 'blocked_ip',
-        ));
 
-        $this->addColumn('qty', array(
-            'header' => $helper->__('Qty blocked'),
+        $this->addColumn('create_time', array(
+            'header' => $helper->__('Date'),
             'align' => 'left',
-            'width' => '100px',
-            'index' => 'qty',
-            'type' => 'number',
+            'width' => '160px',
+            'index' => 'create_time',
+            'type' => 'datetime',
         ));
 
         $this->addColumn('last_block_rule', array(
-            'header' => $helper->__('Last block rule'),
+            'header' => $helper->__('Event'),
             'align' => 'left',
             'width' => '300px',
             'index' => 'last_block_rule',
@@ -85,32 +79,25 @@ class ET_IpSecurity_Block_Adminhtml_Log_Grid extends Mage_Adminhtml_Block_Widget
             'filter' => false,
         ));
 
-        $this->addColumn('create_time', array(
-            'header' => $helper->__('First block'),
+        $this->addColumn('blocked_ip', array(
+            'header' => $helper->__('IP'),
             'align' => 'left',
-            'width' => '160px',
-            'index' => 'create_time',
-            'type' => 'datetime',
-        ));
-
-        $this->addColumn('update_time', array(
-            'header' => $helper->__('Last block'),
-            'align' => 'left',
-            'width' => '160px',
-            'index' => 'update_time',
-            'type' => 'datetime',
+            'width' => '150px',
+            'index' => 'blocked_ip',
         ));
 
         $this->addColumn('blocked_from', array(
-            'header' => $helper->__('Blocked from'),
+            'header' => $helper->__('Url'),
             'align' => 'left',
             //'width'     => '100px',
             'index' => 'blocked_from',
         ));
 
-        $this->addExportType('*/*/exportCsv', Mage::helper('customer')->__('CSV'));
-        $this->addExportType('*/*/exportXml', Mage::helper('customer')->__('Excel XML'));
 
         return parent::_prepareColumns();
     }
+
+
+
+
 }

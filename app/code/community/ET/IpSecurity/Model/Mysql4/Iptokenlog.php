@@ -18,16 +18,16 @@
  */
 
 /**
- * Class ET_IpSecurity_Model_Ipsecuritylog
+ * Class ET_IpSecurity_Model_Mysql4_Iptokenlog
  */
-class ET_IpSecurity_Model_Ipsecuritylog extends Mage_Core_Model_Abstract
+class ET_IpSecurity_Model_Mysql4_Iptokenlog extends Mage_Core_Model_Mysql4_Abstract
 {
     /**
      * Internal constructor
      */
     public function _construct()
     {
-        parent::_construct();
-        $this->_init('etipsecurity/ipsecuritylog');
+        // Note that the logid refers to the key field in your database table.
+        $this->_init('etipsecurity/iptokenlog', 'logid');
     }
 }

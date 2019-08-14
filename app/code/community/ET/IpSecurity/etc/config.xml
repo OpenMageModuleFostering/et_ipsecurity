@@ -23,7 +23,7 @@
     <modules>
         <ET_IpSecurity>
             <name>ET Ip Security</name>
-            <version>2.0.0</version>
+            <version>2.2.0</version>
             <descr>
                 <ru_RU><![CDATA[Модуль позволяет ограничивать доступ к сайту посетителям по IP, IP маскам или диапозону IP.
                     <br>При срабатывании правила перенаправляет посетителя на указанную CMS страницу или просто на пустую страницу.
@@ -58,6 +58,7 @@
         </ET_IpSecurity>
     </modules>
     <global>
+
         <models>
             <etipsecurity>
                 <class>ET_IpSecurity_Model</class>
@@ -70,8 +71,16 @@
                         <table>ipsecurity_log</table>
                     </ipsecuritylog>
                 </entities>
+
+                <entities>
+                    <iptokenlog>
+                        <table>ipsecurity_token_log</table>
+                    </iptokenlog>
+                </entities>
+
             </etipsecurity_mysql4>
         </models>
+
         <helpers>
             <etipsecurity>
                 <class>ET_IpSecurity_Helper</class>
@@ -111,11 +120,24 @@
                     <file>et_ipsecurity.html</file>
                     <type>text</type>
                 </etipsecurity_ipsecurityfront_email_template>
+
                 <etipsecurity_ipsecurityadmin_email_template translate="label" module="etipsecurity">
                     <label>Security Violence to Admin</label>
                     <file>et_ipsecurity_admin.html</file>
                     <type>text</type>
                 </etipsecurity_ipsecurityadmin_email_template>
+
+                <etipsecurity_ipsecuritytoken_email_template translate="label" module="etipsecurity">
+                    <label>Successful authentication by token</label>
+                    <file>et_ipsecurity_ipsecuritytoken.html</file>
+                    <type>text</type>
+                </etipsecurity_ipsecuritytoken_email_template>
+
+                <etipsecurity_ipsecuritytoken_fail_email_template translate="label" module="etipsecurity">
+                    <label>Unsuccessful authentication by token</label>
+                    <file>et_ipsecurity_ipsecuritytoken_fail.html</file>
+                    <type>text</type>
+                </etipsecurity_ipsecuritytoken_fail_email_template>
             </email>
         </template>
 
@@ -146,6 +168,9 @@
 
     <default>
         <etipsecurity>
+            <global_settings>
+                <get_ip_method>REMOTE_ADDR</get_ip_method>
+            </global_settings>
             <ipsecurityfront>
                 <email_always>0</email_always>
             </ipsecurityfront>
@@ -194,8 +219,21 @@
  ]]>
                 </message>
                 <remindermessage>
-                    <![CDATA[<p style="margin:0; padding:6px 10px; background:#d75f07; font-size:12px; line-height:1.15; text-align:center; color:#fff;">This store is under maintenance. Yo can see this page because your IP is in exception list.</p>]]></remindermessage>
+                    <![CDATA[<p style="margin:0; padding:6px 10px; background:#d75f07; font-size:12px; line-height:1.15; text-align:center; color:#fff;">This store is under maintenance. Yo can see this page because your IP is in exception list.</p>]]>
+                </remindermessage>
             </ipsecuritymaintetance>
+
+            <ipsecuritytoken>
+                <enabled>0</enabled>
+                <param_name>ipbypas</param_name>
+                <!--<token></token>-->
+                <!--<token_link></token_link>-->
+                <!--<last_updated_date></last_updated_date>-->
+            </ipsecuritytoken>
+            <general>
+                <log_enabled>1</log_enabled>
+                <log_file>etipsecurity.log</log_file>
+            </general>
         </etipsecurity>
     </default>
 
@@ -215,17 +253,20 @@
     </frontend>
     <admin>
         <routers>
-            <etipsecurity>
-                <use>admin</use>
+            <adminhtml>
                 <args>
-                    <module>ET_IpSecurity</module>
-                    <frontName>etipsecurity</frontName>
+                    <modules>
+                        <etipsecurity after="Mage_Adminhtml">ET_IpSecurity_Adminhtml</etipsecurity>
+                        <frontName>etipsecurity</frontName>
+                    </modules>
                 </args>
-            </etipsecurity>
+            </adminhtml>
+
         </routers>
     </admin>
     <adminhtml>
         <events>
+
             <controller_action_predispatch>
                 <observers>
                     <ET_IpSecurity_observer>
@@ -235,14 +276,47 @@
                     </ET_IpSecurity_observer>
                 </observers>
             </controller_action_predispatch>
+
+            <admin_user_authenticate_before>
+                <observers>
+                    <ET_IpSecurity_observer>
+                        <type>singleton</type>
+                        <class>etipsecurity/observer</class>
+                        <method>onLoadingAdmin</method>
+                    </ET_IpSecurity_observer>
+                </observers>
+            </admin_user_authenticate_before>
+
         </events>
         <menu>
             <customer>
                 <children>
                     <etipsecurity translate="title" module="etipsecurity">
-                        <title>ET IP Security log</title>
-                        <action>etipsecurity/adminhtml_log</action>
+                        <title>IP Security</title>
                         <sort_order>300</sort_order>
+                        <children>
+
+                            <restricted_log translate="title" module="etipsecurity">
+                                <title>Security log</title>
+                                <sort_order>30</sort_order>
+                                <action>adminhtml/etipsecurity_log</action>
+                            </restricted_log>
+
+                            <restricted_token_log translate="title" module="etipsecurity">
+                                <title>Security Token log</title>
+                                <sort_order>50</sort_order>
+                                <action>adminhtml/etipsecurity_token_log</action>
+                            </restricted_token_log>
+
+
+                            <system_config translate="title" module="etipsecurity">
+                                <title>Global settings</title>
+                                <sort_order>900</sort_order>
+                                <action>adminhtml/system_config/edit/section/etipsecurity</action>
+                            </system_config>
+
+
+                        </children>
                     </etipsecurity>
                 </children>
             </customer>
@@ -251,6 +325,7 @@
             <resources>
                 <admin>
                     <children>
+
                         <system>
                             <children>
                                 <config>
@@ -263,11 +338,31 @@
                                 </config>
                             </children>
                         </system>
+
                         <customer>
                             <children>
                                 <etipsecurity translate="title" module="etipsecurity">
-                                    <title>ET IP Security log</title>
+                                    <title>ET IP Security Section</title>
                                     <sort_order>300</sort_order>
+                                    <children>
+                                        <restricted_log>
+                                            <title>Security log</title>
+                                            <sort_order>300</sort_order>
+                                        </restricted_log>
+
+                                        <restricted_token_log>
+                                            <title>Security Token log</title>
+                                            <sort_order>350</sort_order>
+                                        </restricted_token_log>
+
+
+                                        <system_config>
+                                            <title>Global settings</title>
+                                            <sort_order>900</sort_order>
+                                        </system_config>
+
+
+                                    </children>
                                 </etipsecurity>
                             </children>
                         </customer>

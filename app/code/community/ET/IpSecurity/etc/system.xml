@@ -37,6 +37,7 @@
             <show_in_website>1</show_in_website>
             <show_in_store>1</show_in_store>
             <groups>
+
                 <info translate="label">
                     <label>IP Security information</label>
                     <sort_order>1</sort_order>
@@ -53,6 +54,35 @@
                         </support_information>
                     </fields>
                 </info>
+
+                <global_settings translate="label">
+                    <label>Global Settings</label>
+                    <sort_order>2</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>1</show_in_store>
+                    <fields>
+                        <get_ip_method translate="label comment">
+                            <label>Method to get IP</label>
+                            <comment><![CDATA[Extension receives customer IP from server. Servers can store this information in different variables. Usually variable REMOTE_ADDR is used. But if your server is configured differently, you can select neccessary IP address get method.]]></comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>etipsecurity/ipVariable</source_model>
+                            <sort_order>100</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </get_ip_method>
+                        <methods_information translate="label">
+                            <frontend_model>etipsecurity/adminhtml_getIpInfo</frontend_model>
+                            <label>Current server values</label>
+                            <sort_order>200</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </methods_information>
+                    </fields>
+                </global_settings>
+
                 <ipsecurityfront translate="label comment">
                     <label>IP Security - Frontend</label>
                     <sort_order>10</sort_order>
@@ -62,7 +92,7 @@
                     <fields>
                         <allow translate="label comment">
                             <label>Allow these IPs</label>
-                            <comment>Visitors with other IPs will be blocked.</comment>
+                            <comment><![CDATA[Visitors with other IPs will be blocked.]]></comment>
                             <frontend_type>textarea</frontend_type>
                             <sort_order>10</sort_order>
                             <show_in_default>1</show_in_default>
@@ -71,6 +101,7 @@
                         </allow>
                         <block translate="label">
                             <label>Block these IPs</label>
+                            <comment><![CDATA[You can enter IP addresses, masks and ranges. Comments are added with character |. Each rule on separate row.<br>Example:<br>127.0.0.1|My address<br>10.*.*.*|internal company IPs<br>10.0.0.1-20.0.0.1|IP Range<br>10.0.0.192/26|IP Range]]></comment>
                             <frontend_type>textarea</frontend_type>
                             <sort_order>20</sort_order>
                             <show_in_default>1</show_in_default>
@@ -89,7 +120,7 @@
                         </redirect_blank>
                         <redirect_page translate="label comment">
                             <label>Redirect to CMS page</label>
-                            <comment>Visitor will not be notified about blocking rule redirection.</comment>
+                            <comment><![CDATA[Visitor will not be notified about blocking rule redirection.]]></comment>
                             <frontend_type>select</frontend_type>
                             <source_model>adminhtml/system_config_source_cms_page</source_model>
                             <sort_order>40</sort_order>
@@ -136,6 +167,7 @@
                         </email_always>
                     </fields>
                 </ipsecurityfront>
+
                 <ipsecurityadmin translate="label comment">
                     <label>IP Security - Admin</label>
                     <sort_order>20</sort_order>
@@ -154,6 +186,7 @@
                         </allow>
                         <block translate="label">
                             <label>Block these IPs</label>
+                            <comment><![CDATA[You can enter IP addresses, masks and ranges. Comments are added with character |. Each rule on separate row.<br>Example:<br>127.0.0.1|My address<br>10.*.*.*|internal company IPs<br>10.0.0.1-20.0.0.1|IP Range<br>10.0.0.192/26|IP Range]]></comment>
                             <frontend_type>textarea</frontend_type>
                             <sort_order>20</sort_order>
                             <show_in_default>1</show_in_default>
@@ -239,7 +272,7 @@
                         <except translate="label comment">
                             <label>Except these IPs</label>
                             <frontend_type>textarea</frontend_type>
-                            <comment>Visitors with these IPs will not be redirected to maintenance page.</comment>
+                            <comment><![CDATA[Visitors with these IPs will not be redirected to maintenance page.]]></comment>
                             <sort_order>20</sort_order>
                             <show_in_default>1</show_in_default>
                             <show_in_website>1</show_in_website>
@@ -264,6 +297,231 @@
                         </remindermessage>
                     </fields>
                 </ipsecuritymaintetance>
+
+                <ipsecuritytoken translate="label">
+                    <label>IP Security - Token access</label>
+                    <sort_order>40</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>0</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+
+                        <enabled translate="label">
+                            <label>Enable access by token</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </enabled>
+
+                        <heading_token_link translate="label">
+                            <label>Generate Access link</label>
+                            <frontend_model>adminhtml/system_config_form_field_heading</frontend_model>
+                            <sort_order>12</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </heading_token_link>
+
+                        <param_name translate="label">
+                            <label>GET parameter name</label>
+                            <comment><![CDATA[We recommend changing the default name of this parameter - it will complicate the possibility of link brute force. This field is required to create a token. Do not use spaces and special characters.]]></comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </param_name>
+
+                        <last_updated_date translate="label button_label comment">
+                            <label>Access link create time</label>
+                            <frontend_type>label</frontend_type>
+                            <frontend_model>etipsecurity/adminhtml_system_config_form_field_token_update_date</frontend_model>
+                            <sort_order>25</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </last_updated_date>
+
+                        <token_button translate="label comment">
+                            <!--<button_label>Generate token</button_label>-->
+                            <frontend_model>etipsecurity/adminhtml_system_config_form_field_token_button</frontend_model>
+                            <comment><![CDATA[When creating a new token, old link is deactivated]]></comment>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <token_area>front</token_area>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </token_button>
+
+
+                        <token_link translate="label">
+                            <label>Access link to Site</label>
+                            <comment><![CDATA[Use this link to access the site from the blocked IP addresses. Note the token and cookie lifetimes.]]></comment>
+                            <frontend_model>etipsecurity/adminhtml_system_config_form_field_link</frontend_model>
+                            <sort_order>40</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </token_link>
+
+
+                        <token_link_admin translate="label">
+                            <label>Access link to Admin page</label>
+                            <comment><![CDATA[Use this link to access the site administration panel from the blocked IP addresses. Note the token and cookie lifetimes.]]></comment>
+                            <frontend_model>etipsecurity/adminhtml_system_config_form_field_admin_link</frontend_model>
+                            <sort_order>45</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </token_link_admin>
+
+
+                        <heading_validity_settings translate="label">
+                            <!--<label>Validity and Notification</label>-->
+                            <label>Validity</label>
+                            <frontend_model>adminhtml/system_config_form_field_heading</frontend_model>
+                            <sort_order>50</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </heading_validity_settings>
+
+
+                        <token_expire>
+                            <label>Validity period of token</label>
+                            <comment><![CDATA[Measured in days. After this time the access link will not be available. The countdown starts from access link create time.]]></comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>etipsecurity/system_config_source_token_expire</source_model>
+                            <sort_order>60</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </token_expire>
+
+                        <cookie_expire>
+                            <label>Cookie lifetime</label>
+                            <comment><![CDATA[Measured in hours. The countdown starts from the last page visit by the access link or the last action on the site after using the access link. After this time, access to the site from the banned IP addresses will not be possible without re-entering access link.]]></comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>etipsecurity/system_config_source_cookie_expire</source_model>
+                            <sort_order>70</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </cookie_expire>
+
+                        <heading_notification_settings translate="label">
+                            <!--<label>Validity and Notification</label>-->
+                            <label>Notification</label>
+                            <frontend_model>adminhtml/system_config_form_field_heading</frontend_model>
+                            <sort_order>80</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </heading_notification_settings>
+
+                        <email_always translate="label comment">
+                            <label>Notify when Access Link is used</label>
+                            <comment><![CDATA[Yes - the notification will be sent on any attempt to use the access link. No - the notification will be sent only on a successful attempt.]]></comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>90</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </email_always>
+
+                        <email_event translate="label comment">
+                            <label>Email for notification</label>
+                            <comment><![CDATA[You can specify multiple recipients. Comma separated. For example: admin1@example.com, admin2@example.com]]></comment>
+                            <frontend_type>text</frontend_type>
+                            <!--<validate>required-entry</validate>-->
+                            <sort_order>100</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </email_event>
+
+                        <email_template translate="label">
+                            <label>Authentication success email template</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_email_template</source_model>
+                            <sort_order>110</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </email_template>
+
+                        <fail_email_template translate="label">
+                            <label>Authentication fail email template</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_email_template</source_model>
+                            <sort_order>120</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <depends>
+                                <enabled>1</enabled>
+                            </depends>
+                        </fail_email_template>
+
+
+                        <email_identity translate="label">
+                            <label>Store email</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_email_identity</source_model>
+                            <sort_order>130</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                        </email_identity>
+
+
+
+                    </fields>
+                </ipsecuritytoken>
+
             </groups>
         </etipsecurity>
     </sections>

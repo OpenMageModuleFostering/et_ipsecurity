@@ -18,9 +18,9 @@
  */
 
 /**
- * Class ET_IpSecurity_Model_Ipsecuritylog
+ * Class ET_IpSecurity_Model_Mysql4_Iptokenlog_Collection
  */
-class ET_IpSecurity_Model_Ipsecuritylog extends Mage_Core_Model_Abstract
+class ET_IpSecurity_Model_Mysql4_Iptokenlog_Collection extends Mage_Core_Model_Mysql4_Collection_Abstract
 {
     /**
      * Internal constructor
@@ -28,6 +28,6 @@ class ET_IpSecurity_Model_Ipsecuritylog extends Mage_Core_Model_Abstract
     public function _construct()
     {
         parent::_construct();
-        $this->_init('etipsecurity/ipsecuritylog');
+        $this->_init('etipsecurity/iptokenlog');
     }
 }

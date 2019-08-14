@@ -17,8 +17,8 @@
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
+/** @var Mage_Core_Model_Resource_Setup $installer */
 $installer = $this;
-/* $installer Mage_Core_Model_Resource_Setup */
 
 $installer->startSetup();
 

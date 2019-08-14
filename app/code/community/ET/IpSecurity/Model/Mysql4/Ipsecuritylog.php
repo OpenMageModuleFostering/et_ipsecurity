@@ -17,8 +17,14 @@
  * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
  */
 
+/**
+ * Class ET_IpSecurity_Model_Mysql4_Ipsecuritylog
+ */
 class ET_IpSecurity_Model_Mysql4_Ipsecuritylog extends Mage_Core_Model_Mysql4_Abstract
 {
+    /**
+     * Internal constructor
+     */
     public function _construct()
     {
         // Note that the logid refers to the key field in your database table.

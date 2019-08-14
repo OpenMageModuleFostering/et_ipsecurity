@@ -1,0 +1,89 @@
+<?php
+/**
+ * NOTICE OF LICENSE
+ *
+ * You may not sell, sub-license, rent or lease
+ * any portion of the Software or Documentation to anyone.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade to newer
+ * versions in the future.
+ *
+ * @category   ET
+ * @package    ET_IpSecurity
+ * @copyright  Copyright (c) 2016 ET Web Solutions (http://etwebsolutions.com)
+ * @contacts   support@etwebsolutions.com
+ * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
+ */
+?>
+
+<?php
+/**@var ET_IpSecurity_Block_Adminhtml_System_Config_Form_Field_Token_Button $this */
+?>
+
+<button onclick="etIpSecurityGetToken(); return false;" class="scalable" type="button"
+        id="<?php echo $this->getHtmlId() ?>">
+    <span id="ipsecuritytoken_token_genegate_button"><?php echo $this->escapeHtml($this->getData('button_label')) ?></span>
+</button>
+
+&nbsp;
+
+<button onclick="etIpSecurityRemoveToken(); return false;" class="scalable" type="button"
+        id="<?php echo $this->getHtmlId() ?>">
+    <span id="ipsecuritytoken_token_remove_button"><?php echo $this->escapeHtml($this->getData('button_label_delete')) ?></span>
+</button><br/>
+
+
+<script type="text/javascript">
+    //<![CDATA[
+    function etIpSecurityGetToken() {
+        //var elem = $('<?php echo $this->getHtmlId() ?>');
+
+        new Ajax.Request('<?php echo $this->getAjaxUrl() ?>', {
+            parameters:{
+                "ipsecurity_token_name":$("etipsecurity_ipsecuritytoken_param_name").value
+            },
+
+            onSuccess:function (transport) {
+
+                //$('<?php echo $this->getHtmlId() ?>').disabled = true;
+                try {
+                    response = eval('(' + transport.responseText + ')');
+                    $("etipsecurity_ipsecuritytoken_token_link").innerHTML = response.frontUrl;
+                    $("etipsecurity_ipsecuritytoken_token_link_admin").innerHTML = response.adminUrl;
+
+                    $("etipsecurity_ipsecuritytoken_last_updated_date").update(response.date);
+                } catch (e) {
+                }
+            }
+        });
+    }
+
+
+    function etIpSecurityRemoveToken() {
+        //var elem = $('<?php echo $this->getHtmlId() ?>');
+
+        new Ajax.Request('<?php echo $this->getData('ajax_url_delete') ?>', {
+            parameters:{
+                "ipsecurity_token_name":$("etipsecurity_ipsecuritytoken_param_name").value
+            },
+
+            onSuccess:function (transport) {
+
+                //$('<?php echo $this->getHtmlId() ?>').disabled = true;
+                try {
+                    response = eval('(' + transport.responseText + ')');
+                    $("etipsecurity_ipsecuritytoken_token_link").innerHTML = response.frontUrl;
+                    $("etipsecurity_ipsecuritytoken_token_link_admin").innerHTML = response.adminUrl;
+
+                    $("etipsecurity_ipsecuritytoken_last_updated_date").update(response.date);
+                } catch (e) {
+                }
+            }
+        });
+    }
+
+
+    //]]>
+</script>

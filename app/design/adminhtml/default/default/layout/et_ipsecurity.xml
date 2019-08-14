@@ -20,9 +20,32 @@
  -->
 
 <layout version="0.1.0">
+
     <etipsecurity_adminhtml_log_index>
         <reference name="content">
             <block type="etipsecurity/adminhtml_log" name="log"/>
         </reference>
     </etipsecurity_adminhtml_log_index>
+
+    <adminhtml_etipsecurity_log_index>
+        <update handle="etipsecurity_adminhtml_log_index" />
+    </adminhtml_etipsecurity_log_index>
+
+
+
+    <etipsecurity_adminhtml_token_log_index>
+        <reference name="content">
+            <block type="core/template" name="etipsecutity.tokenlog.grid.comment"
+                   template="et_ipsecurity/tokenlog-grid-comment.phtml"/>
+            <block type="etipsecurity/adminhtml_token_log" name="log"/>
+        </reference>
+    </etipsecurity_adminhtml_token_log_index>
+
+
+    <adminhtml_etipsecurity_token_log_index>
+        <update handle="etipsecurity_adminhtml_token_log_index" />
+    </adminhtml_etipsecurity_token_log_index>
+
+
+
 </layout>

@@ -1,0 +1,58 @@
+<?php
+/**
+ * NOTICE OF LICENSE
+ *
+ * You may not sell, sub-license, rent or lease
+ * any portion of the Software or Documentation to anyone.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade to newer
+ * versions in the future.
+ *
+ * @category   ET
+ * @package    ET_IpSecurity
+ * @copyright  Copyright (c) 2016 ET Web Solutions (http://etwebsolutions.com)
+ * @contacts   support@etwebsolutions.com
+ * @license    http://shop.etwebsolutions.com/etws-license-free-v1/   ETWS Free License (EFL1)
+ */
+?>
+
+<?php
+/** @var Mage_Core_Block_Template $this */
+/** @var ET_IpSecurity_Helper_Data $helper */
+$helper = Mage::helper('etipsecurity');
+
+$msg = '';
+$isAccessByTokenEnabled = $helper->isEnabledIpSecurityToken();
+
+$urlToSistemConfig = Mage::helper('adminhtml')->getUrl("adminhtml/system_config/edit/section/etipsecurity");
+
+if (!$isAccessByTokenEnabled) {
+    $message = 'Access by security token is disabled, you can enable access in the <a href=\'%s\' target=\'_blank\'>module settings</a>.';
+    $msg .= $helper->__($message, $urlToSistemConfig);
+    $msg .= '<br/>';
+}
+
+$tokenLink = $helper->getToken();
+
+if ($tokenLink != '') {
+    $msg .= $helper->__('Current token is:');
+    $msg .= ' ' . $tokenLink;
+    $msg .= '<br/>';
+}
+
+$msg .= $helper->getTokenExpiredTimeMessage();
+$msg .= '<br/>';
+
+if ($isAccessByTokenEnabled) {
+    $message = 'You can change Token Access settings in the <a href=\'%s\' target=\'_blank\'>module settings</a>.';
+    $msg .= $helper->__($message, $urlToSistemConfig);
+    $msg .= '<br/>';
+}
+
+?>
+
+<div class="content-header" style="margin-bottom: 50px;">
+    <?php echo $msg ?>
+</div>
