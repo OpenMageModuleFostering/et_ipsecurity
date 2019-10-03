@@ -1,16 +1,19 @@
 {
-    "name": "OpenMageModuleFostering/ET_IpSecurity",
+    "name": "OpenMageModuleFostering\/ET_IpSecurity",
     "type": "magento-module",
     "license": "ETWS-Free-License-(EFL1)",
     "homepage": "",
     "description": "Extension gives you ability to restrict access to your website by IP address or to close your shop for maintenance.",
     "authors": [
-    {
-        "name": "Jurij",
-        "email": "support@etwebsolutions.com"
-    }
-],
+        {
+            "name": "Jurij",
+            "email": "support@etwebsolutions.com"
+        }
+    ],
     "suggest": {
-        "magento-hackathon/magento-composer-installer": "*"
-    }
+        "magento-hackathon\/magento-composer-installer": "*"
+    },
+    "keywords": [
+        "openmage-module"
+    ]
 }
